@@ -160,3 +160,5 @@
 /Engine/Source/Editor/**
 /Engine/Source/Programs/**
 /Engine/Source/ThirdParty/**
+/Engine/Source/Runtime/Core/**
+/Engine/Source/Runtime/Engine/**
