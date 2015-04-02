@@ -212,6 +212,7 @@ private:
         float FadeRate;
         bool bIsFadingOut;
         float Priority;
+		bool bIsInteriorVolume;
 
         AkReverbVolumeFadeControl(uint32 InAuxBusId, float InCurrentControlValue, float InTargetControlValue, float InFadeRate, bool InbIsFadingOut, float InPriority, bool InbIsInteriorVolume) :
             AuxBusId(InAuxBusId),

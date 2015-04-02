@@ -413,7 +413,7 @@ void UAkComponent::UpdateAkReverbVolumeList( FVector Loc )
             bool bIsInterior = !FoundVolumes[Idx]->GetHumanReadableName().Contains(TEXT("exterior"));
 
             // The volume was not found, add it to the list
-            CurrentAkReverbVolumes.Add(AkReverbVolumeFadeControl(CurrentAuxBusId, 0.f, FoundVolumes[Idx]->SendLevel, FoundVolumes[Idx]->FadeRate, false, FoundVolumes[Idx]->Priority, , bIsInterior));
+            CurrentAkReverbVolumes.Add(AkReverbVolumeFadeControl(CurrentAuxBusId, 0.f, FoundVolumes[Idx]->SendLevel, FoundVolumes[Idx]->FadeRate, false, FoundVolumes[Idx]->Priority, bIsInterior));
         }
         else
         {
