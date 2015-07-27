@@ -15,7 +15,7 @@ If you need any help, please refer to the `Wwise_UE4_Integration.chm` file in th
 Source releases
 ---------------
 
-This integration is compatible with Unreal Engine 4.7 and is based on Wwise 2014.1.3. You can download the latest Wwise version [here](http://www.audiokinetic.com/downloads/).
+This integration is compatible with Unreal Engine 4.8 and is based on Wwise 2014.1.5. You can download the latest Wwise version [here](http://www.audiokinetic.com/downloads/).
 
 If you wish to compile against Wwise 2013.2.x, simply remove the following line in `<UE4_ROOT>/Engine/Source/ThirdParty/Audiokinetic/Audiokinetic.Build.cs`: 
 

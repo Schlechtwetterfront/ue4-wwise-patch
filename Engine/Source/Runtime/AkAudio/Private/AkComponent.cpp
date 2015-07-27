@@ -72,6 +72,11 @@ void UAkComponent::PostAkEventByName( const FString& EventName )
 #else
         const WIDECHAR * szEventName = *EventName;
 #endif
+		if (OcclusionRefreshInterval > 0.0f)
+		{
+			CalculateOcclusionValues(false);
+		}
+
         AK::SoundEngine::PostEvent( szEventName, (AkGameObjectID) this );
     }
 }
@@ -198,6 +203,13 @@ void UAkComponent::FinishDestroy( void )
     Super::FinishDestroy();
 }
 
+void UAkComponent::OnComponentDestroyed(void)
+{
+	Super::OnComponentDestroyed();
+
+	UnregisterGameObject();
+}
+
 void UAkComponent::ShutdownAfterError( void )
 {
     UnregisterGameObject();
@@ -313,6 +325,8 @@ void UAkComponent::Activate(bool bReset)
     {
         CurrentAkReverbVolumes[Idx].CurrentControlValue = CurrentAkReverbVolumes[Idx].TargetControlValue;
     }
+
+	FAkAudioDevice::Get()->SetAttenuationScalingFactor(this, AttenuationScalingFactor);
 }
 
 void UAkComponent::OnUpdateTransform(bool bSkipPhysicsMove)
@@ -505,6 +519,12 @@ void UAkComponent::SetOcclusion(const float DeltaTime)
         return;
     }
 
+	CalculateOcclusionValues(true);
+}
+
+void UAkComponent::CalculateOcclusionValues(bool CalledFromTick)
+{
+
     LastOcclusionRefresh = GetWorld()->GetTimeSeconds();
     static FName NAME_SoundOcclusion = FName(TEXT("SoundOcclusion"));
 
@@ -531,7 +551,14 @@ void UAkComponent::SetOcclusion(const float DeltaTime)
             ListenerPosition = AkAudioDevice->GetListenerPosition(ListenerIdx);
         }
         FVector SourcePosition = GetComponentLocation();
-        bool bNowOccluded = GetWorld()->LineTraceSingle(OutHit, SourcePosition, ListenerPosition, ECC_Visibility, FCollisionQueryParams(NAME_SoundOcclusion, true));
+		APlayerController* PlayerController = World->GetFirstPlayerController();
+		APawn* ActorToIgnore = NULL;
+		if (PlayerController != NULL)
+		{
+			ActorToIgnore = PlayerController->GetPawn();
+		}
+
+		bool bNowOccluded = GetWorld()->LineTraceSingleByChannel(OutHit, SourcePosition, ListenerPosition, ECC_Visibility, FCollisionQueryParams(NAME_SoundOcclusion, true, ActorToIgnore));
         if( bNowOccluded )
         {
             FBox BoundingBox;
@@ -567,8 +594,9 @@ void UAkComponent::SetOcclusion(const float DeltaTime)
             int32 NumObstructedPaths = 0;
             for(int32 PointIdx = 0; PointIdx < Points.Num(); PointIdx++)
             {
-                bool bListenerToObstacle = GetWorld()->LineTraceTest(ListenerPosition, Points[PointIdx], FCollisionQueryParams(NAME_SoundOcclusion, true), FCollisionObjectQueryParams(ECC_WorldStatic));
-                bool bSourceToObstacle = GetWorld()->LineTraceTest(SourcePosition, Points[PointIdx], FCollisionQueryParams(NAME_SoundOcclusion, true), FCollisionObjectQueryParams(ECC_WorldStatic));
+				FHitResult TempHit;
+				bool bListenerToObstacle = GetWorld()->LineTraceSingleByChannel(TempHit, ListenerPosition, Points[PointIdx], ECC_Visibility, FCollisionQueryParams(NAME_SoundOcclusion, true, ActorToIgnore));
+				bool bSourceToObstacle = GetWorld()->LineTraceSingleByChannel(TempHit, SourcePosition, Points[PointIdx], ECC_Visibility, FCollisionQueryParams(NAME_SoundOcclusion, true, ActorToIgnore));
                 if(bListenerToObstacle || bSourceToObstacle)
                 {
                     NumObstructedPaths++;
@@ -604,5 +632,15 @@ void UAkComponent::SetOcclusion(const float DeltaTime)
         {
             ListenerOcclusionInfo[ListenerIdx].TargetValue = 0.0f;
         }
+
+		if (!CalledFromTick)
+		{
+			ListenerOcclusionInfo[ListenerIdx].CurrentValue = ListenerOcclusionInfo[ListenerIdx].TargetValue;
+			FAkAudioDevice * AkAudioDevice = FAkAudioDevice::Get();
+			if (AkAudioDevice)
+			{
+				AkAudioDevice->SetOcclusionObstruction(this, ListenerIdx, 0.0f, ListenerOcclusionInfo[ListenerIdx].CurrentValue);
+			}
+		}
     }
 }

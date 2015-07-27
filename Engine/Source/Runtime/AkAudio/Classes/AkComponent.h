@@ -144,6 +144,7 @@ public:
      * Clean up
      */
     virtual void FinishDestroy();
+	virtual void OnComponentDestroyed() override;
 
     /**
      * Clean up after error
@@ -164,6 +165,7 @@ public:
      */
     void UpdateAkReverbVolumeList(FVector Loc);
 
+	void CalculateOcclusionValues(bool CalledFromTick);
 
 
 private:
