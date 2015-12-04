@@ -155,7 +155,7 @@ public:
 
     // Begin USceneComponent Interface
     virtual void Activate(bool bReset=false) override;
-    virtual void OnUpdateTransform(bool bSkipPhysicsMove) override;
+	virtual void OnUpdateTransform(bool bSkipPhysicsMove, ETeleportType Teleport = ETeleportType::None) override;
     // End USceneComponent Interface
 
     /** Gets all AkReverbVolumes at the AkComponent's current location, and puts them in a list
@@ -167,7 +167,14 @@ public:
 
 	void CalculateOcclusionValues(bool CalledFromTick);
 
+	void SetAutoDestroy(bool in_AutoDestroy) { bAutoDestroy = in_AutoDestroy; }
 
+	/** Thread safe counter for number of active events */
+	FThreadSafeCounter NumActiveEvents;
+
+	/** Flag indicating we will soon destroy this AkComponent */
+	bool bFlaggedForDestroy;
+	
 private:
     /**
      * Register the component with Wwise
@@ -232,7 +239,10 @@ private:
 
     /** Whether to use reverb volumes or not */
     bool bUseReverbVolumes;
-
+	
+	/** Whether to automatically destroy the component when the event is finished */
+	bool bAutoDestroy;
+	
     // Occlusion/obstruction features -------------------------------------------------------------
 
     /** 

@@ -21,6 +21,20 @@
     UAkComponent
 ------------------------------------------------------------------------------------*/
 
+
+static void AkComponentCallback( AkCallbackType in_eType, AkCallbackInfo* in_pCallbackInfo )
+{
+	UAkComponent * pObj = ( (UAkComponent *) in_pCallbackInfo->pCookie );
+	if( pObj )
+	{
+		pObj->NumActiveEvents.Decrement();
+		if( pObj->NumActiveEvents.GetValue() == 0 )
+		{
+			pObj->bFlaggedForDestroy = true;
+		}
+	}
+}
+
 UAkComponent::UAkComponent(const class FObjectInitializer& ObjectInitializer) :
 Super(ObjectInitializer)
 {
@@ -43,6 +57,9 @@ Super(ObjectInitializer)
 #endif
 
     AttenuationScalingFactor = 1.0f;
+	bAutoDestroy = false;
+	bFlaggedForDestroy = false;
+	NumActiveEvents.Reset();
 }
 
 void UAkComponent::PostAssociatedAkEvent()
@@ -77,7 +94,15 @@ void UAkComponent::PostAkEventByName( const FString& EventName )
 			CalculateOcclusionValues(false);
 		}
 
-        AK::SoundEngine::PostEvent( szEventName, (AkGameObjectID) this );
+        if( bAutoDestroy )
+		{
+			NumActiveEvents.Increment();
+			AK::SoundEngine::PostEvent( szEventName, (AkGameObjectID) this, AK_EndOfEvent, &AkComponentCallback, this);
+		}
+		else
+		{
+			AK::SoundEngine::PostEvent( szEventName, (AkGameObjectID) this );
+		}
     }
 }
 
@@ -309,6 +334,18 @@ void UAkComponent::TickComponent(float DeltaTime, enum ELevelTick TickType, FAct
         {
             SetOcclusion(DeltaTime);
         }
+		
+		if( bAutoDestroy && bFlaggedForDestroy )
+		{
+			if( NumActiveEvents.GetValue() == 0 )
+			{
+				DestroyComponent();
+			}
+			else
+			{
+				bFlaggedForDestroy = false;
+			}
+		}
     }
 }
 
@@ -329,9 +366,9 @@ void UAkComponent::Activate(bool bReset)
 	FAkAudioDevice::Get()->SetAttenuationScalingFactor(this, AttenuationScalingFactor);
 }
 
-void UAkComponent::OnUpdateTransform(bool bSkipPhysicsMove)
+void UAkComponent::OnUpdateTransform(bool bSkipPhysicsMove, ETeleportType Teleport)
 {
-    Super::OnUpdateTransform(bSkipPhysicsMove);
+    Super::OnUpdateTransform(bSkipPhysicsMove, Teleport);
 
     UpdateGameObjectPosition();
 }
@@ -351,6 +388,11 @@ void UAkComponent::UnregisterGameObject()
     if ( AkAudioDevice )
     {
         AkAudioDevice->UnregisterComponent( this );
+		
+		if(bAutoDestroy)
+		{
+			AkAudioDevice->CancelEventCallbackCookie(this);
+		}
     }
 }
 
@@ -636,7 +678,7 @@ void UAkComponent::CalculateOcclusionValues(bool CalledFromTick)
 		if (!CalledFromTick)
 		{
 			ListenerOcclusionInfo[ListenerIdx].CurrentValue = ListenerOcclusionInfo[ListenerIdx].TargetValue;
-			FAkAudioDevice * AkAudioDevice = FAkAudioDevice::Get();
+			AkAudioDevice = FAkAudioDevice::Get();
 			if (AkAudioDevice)
 			{
 				AkAudioDevice->SetOcclusionObstruction(this, ListenerIdx, 0.0f, ListenerOcclusionInfo[ListenerIdx].CurrentValue);
